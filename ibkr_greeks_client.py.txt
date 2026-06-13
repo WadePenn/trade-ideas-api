@@ -1,0 +1,162 @@
+# ibkr_greeks_client.py — IBKR live option greeks streamer.
+#
+# Requires ibapi (the official IBKR Python client):
+#   py -3.11 -m pip install ibapi
+# or install from TWS/Gateway: C:\Jts\ibapi\  →  py -3.11 setup.py install
+#
+# When ibapi is NOT installed this module imports cleanly but returns
+# None from get_ibkr_client() so the rest of the app keeps running.
+
+from __future__ import annotations
+import logging
+import threading
+import time
+
+log = logging.getLogger("trade_ideas.greeks_client")
+
+try:
+    from ibapi.client  import EClient
+    from ibapi.wrapper import EWrapper
+    from ibapi.contract import Contract
+    _HAS_IBAPI = True
+except ImportError:
+    _HAS_IBAPI = False
+    log.warning(
+        "ibapi not installed — live greeks disabled.  "
+        "Install with: py -3.11 -m pip install ibapi"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Greeks streamer (only built when ibapi is available)
+# ─────────────────────────────────────────────────────────────────
+
+if _HAS_IBAPI:
+    class IBKROptionsGreeks(EWrapper, EClient):
+        def __init__(self, symbol: str = "SPY") -> None:
+            EClient.__init__(self, self)
+            self.symbol             = symbol
+            self.underlying_conId   = None
+            self.stream_started     = False
+            self.latest_greeks: dict = {}
+
+        def nextValidId(self, orderId: int) -> None:
+            self.request_underlying_contract()
+
+        def request_underlying_contract(self) -> None:
+            c = Contract()
+            c.symbol   = self.symbol
+            c.secType  = "STK"
+            c.exchange = "SMART"
+            c.currency = "USD"
+            self.reqContractDetails(9001, c)
+
+        def contractDetails(self, reqId, details) -> None:
+            self.underlying_conId = details.contract.conId
+
+        def contractDetailsEnd(self, reqId) -> None:
+            self.request_option_chain()
+
+        def request_option_chain(self) -> None:
+            self.reqSecDefOptParams(
+                reqId                = 1001,
+                underlyingSymbol     = self.symbol,
+                futFopExchange       = "",
+                underlyingSecType    = "STK",
+                underlyingConId      = self.underlying_conId,
+            )
+
+        def securityDefinitionOptionParameter(
+            self, reqId, exchange, underlyingConId,
+            tradingClass, multiplier, expirations, strikes
+        ) -> None:
+            if self.stream_started:
+                return
+            exp    = sorted(list(expirations))[0]
+            strike = sorted(list(strikes))[len(strikes) // 2]
+            self.start_option_stream(exp, strike)
+            self.stream_started = True
+
+        def start_option_stream(self, expiration: str, strike: float) -> None:
+            c = Contract()
+            c.symbol                         = self.symbol
+            c.secType                        = "OPT"
+            c.currency                       = "USD"
+            c.exchange                       = "SMART"
+            c.lastTradeDateOrContractMonth   = expiration
+            c.strike                         = float(strike)
+            c.right                          = "C"
+            c.multiplier                     = "100"
+            self.reqMktData(2001, c, "100,101,104,106", False, False, [])
+
+        def tickOptionComputation(
+            self, reqId, tickType, tickAttrib, impliedVol,
+            delta, optPrice, pvDividend, gamma, vega, theta, undPrice
+        ) -> None:
+            self.latest_greeks = {
+                "symbol":          self.symbol,
+                "reqId":           reqId,
+                "tickType":        tickType,
+                "iv":              impliedVol,
+                "delta":           delta,
+                "gamma":           gamma,
+                "theta":           theta,
+                "vega":            vega,
+                "optPrice":        optPrice,
+                "underlyingPrice": undPrice,
+            }
+
+else:
+    # Stub class — satisfies imports when ibapi is missing
+    class IBKROptionsGreeks:  # type: ignore[no-redef]
+        def __init__(self, symbol: str = "SPY") -> None:
+            self.symbol        = symbol
+            self.latest_greeks = {}
+
+        def connect(self, *a, **kw) -> None:
+            raise RuntimeError("ibapi not installed — cannot connect to TWS")
+
+        def run(self) -> None:
+            pass
+
+
+# ─────────────────────────────────────────────────────────────────
+# Public API
+# ─────────────────────────────────────────────────────────────────
+
+def start_ibkr_greeks_client(
+    symbol: str = "SPY",
+    host:   str = "127.0.0.1",
+    port:   int = 7497,
+    client_id: int = 6,
+) -> "IBKROptionsGreeks | None":
+    """
+    Start a background greeks-streaming connection to TWS.
+    Returns the client instance on success, None if ibapi is missing.
+    """
+    if not _HAS_IBAPI:
+        log.warning("start_ibkr_greeks_client() called but ibapi is not installed")
+        return None
+    try:
+        app = IBKROptionsGreeks(symbol=symbol)
+        app.connect(host, port, clientId=client_id)
+        t = threading.Thread(target=app.run, daemon=True)
+        t.start()
+        time.sleep(2)   # allow connection + initial data to arrive
+        log.info("IBKROptionsGreeks connected: %s @ %s:%d", symbol, host, port)
+        return app
+    except Exception as exc:
+        log.error("IBKROptionsGreeks failed to connect: %s", exc)
+        return None
+
+
+# Singleton — lazily created on first call to get_ibkr_client()
+_ibkr_client: "IBKROptionsGreeks | None" = None
+
+
+def get_ibkr_client() -> "IBKROptionsGreeks | None":
+    """Return the singleton greeks client, starting it if needed."""
+    global _ibkr_client
+    if _ibkr_client is None and _HAS_IBAPI:
+        _ibkr_client = start_ibkr_greeks_client()
+    return _ibkr_client

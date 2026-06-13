@@ -1,0 +1,6 @@
+# fastapi_endpoints/routers/__init__.py
+from .market       import router as market_router
+from .ibkr         import router as ibkr_router
+from .sell_premium import router as sell_premium_router
+
+__all__ = ["market_router", "ibkr_router", "sell_premium_router"]

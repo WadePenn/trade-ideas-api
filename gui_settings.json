@@ -1,0 +1,10 @@
+{
+    "theme": "dark",
+    "window_width": 1200,
+    "window_height": 800,
+    "refresh_positions": 5,
+    "refresh_orders": 10,
+    "refresh_market": 3,
+    "last_endpoint": "/health",
+    "saved_payload": "{}/health"
+}

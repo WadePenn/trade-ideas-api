@@ -1,0 +1,117 @@
+# main.py — FastAPI entry point for the Trade Ideas backend.
+#
+# Wires together:
+#   - market data endpoints  (/market/...)
+#   - IBKR order endpoints   (/ibkr/...)
+#   - sell-premium scanner   (/sell-premium/...)
+#
+# Run:
+#   py -3.11 -m uvicorn main:app --reload
+#
+# Docs:
+#   http://localhost:8000/docs
+
+from __future__ import annotations
+
+import logging
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# ── routers ─────────────────────────────────────────────────────────────────
+from fastapi_endpoints.routers.market       import router as market_router
+from fastapi_endpoints.routers.ibkr         import router as ibkr_router
+from fastapi_endpoints.routers.sell_premium import router as sp_router
+
+# ── service factories ────────────────────────────────────────────────────────
+from fastapi_endpoints.services.market_data_service import (
+    init_market_data_service,
+    YFinanceProvider,
+)
+from fastapi_endpoints.services.ibkr_order_service import (
+    init_ibkr_order_service,
+    InMemoryOrderProvider,
+)
+from fastapi_endpoints.services.sell_premium_service import (
+    SellPremiumService,
+    init_sell_premium_service,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("trade_ideas.api")
+
+
+# ── app ──────────────────────────────────────────────────────────────────────
+app = FastAPI(
+    title="Trade Ideas API",
+    description=(
+        "Market data + IBKR order routing + Sell Premium scanner "
+        "for the Trade Ideas Tkinter panel."
+    ),
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# CORS — allow the panel (and browser-based tools) to call the API.
+# Tighten allow_origins in production.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ── startup / shutdown hooks ─────────────────────────────────────────────────
+@app.on_event("startup")
+async def startup() -> None:
+    log.info("=== Trade Ideas API starting up ===")
+
+    # Market data — yfinance by default, no API key required.
+    # Swap YFinanceProvider() for IBKRProvider() when you have a live connection.
+    init_market_data_service(YFinanceProvider())
+    log.info("MarketDataService  → YFinanceProvider ready")
+
+    # IBKR orders — in-memory simulation; orders auto-fill after ~8 s.
+    # Swap InMemoryOrderProvider() for IBKRDirectProvider() for live trading.
+    init_ibkr_order_service(InMemoryOrderProvider())
+    log.info("IBKROrderService   → InMemoryOrderProvider ready")
+
+    # Sell Premium scanner
+    init_sell_premium_service(SellPremiumService())
+    log.info("SellPremiumService → ready")
+
+    log.info("=== Startup complete — listening ===")
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    log.info("=== Trade Ideas API shutting down ===")
+
+
+# ── routers ──────────────────────────────────────────────────────────────────
+app.include_router(market_router)   # /market/snapshot/{symbol}
+app.include_router(ibkr_router)     # /ibkr/submit  /ibkr/order/{id}  /ibkr/cancel/{id}
+app.include_router(sp_router)       # /sell-premium/scan  /sell-premium/chain/{symbol}
+
+
+# ── root / health ─────────────────────────────────────────────────────────────
+@app.get("/", tags=["Root"], include_in_schema=False)
+async def root():
+    return {
+        "service": "Trade Ideas API",
+        "version": "1.0.0",
+        "docs":    "/docs",
+        "health":  "/health",
+    }
+
+
+@app.get("/health", tags=["Health"])
+async def health():
+    return {"status": "ok"}
