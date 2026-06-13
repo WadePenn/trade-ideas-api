@@ -232,3 +232,7 @@ class StrategyEngine:
             ideas[0].notes = "★ Best Fit"
         log.info("Generated %d idea(s) for %s | trend=%s | ivr=%.1f", len(ideas), symbol, trend.value, iv_rank)
         return ideas
+
+    def generate_ideas(self, symbol, dte, contracts, market_data):
+        from .models import StrategyType
+        return self.generate(symbol, dte, contracts, StrategyType.AUTO, market_data)
