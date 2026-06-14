@@ -6,10 +6,10 @@ echo  ========================================
 echo    Trade Ideas API  ^|  Starting Up...
 echo  ========================================
 echo.
-start "Trade Ideas Server" cmd /k "cd /d "C:\Users\Valued Customer\fastapi_api" && py -3.11 -m uvicorn main:app --reload"
+start /d "C:\Users\Valued Customer\fastapi_api" "Trade Ideas Server" cmd /k "py -3.11 -m uvicorn main:app --reload"
 echo  [1/3] Server starting...
 timeout /t 4 /nobreak >nul
-start "Trade Ideas Panel" cmd /k "cd /d "C:\Users\Valued Customer\fastapi_api" && py -3.11 -m trade_ideas.panel"
+start /d "C:\Users\Valued Customer\fastapi_api" "Trade Ideas Panel" cmd /k "py -3.11 run_panel.py"
 echo  [2/3] Panel launching...
 timeout /t 2 /nobreak >nul
 start "" "http://localhost:8000/docs"
