@@ -377,6 +377,19 @@ class TradeIdeasPanel(tk.Frame):
             self._strat_btns["SellPremium"] = sp_btn
             _Tip(sp_btn, "Scan 0/7 DTE credit spreads for sell-premium setups")
 
+            # 0DTE Best Premium button
+            dte0_btn = tk.Button(
+                self._sbar, text="0DTE Best Premium",
+                command=self._on_0dte_scan,
+                bg="#1a5276", fg="#ffffff",
+                activebackground="#2874a6", activeforeground="#ffffff",
+                font=("Segoe UI", 9, "bold"),
+                relief="flat", padx=10, pady=4, cursor="hand2",
+            )
+            dte0_btn.pack(side="left", padx=3)
+            self._strat_btns["0DTE"] = dte0_btn
+            _Tip(dte0_btn, "Best 0DTE credit spread ranked by premium/risk.")
+
     # --- row 2 : status bar ------------------------------------------------
     def _build_status_bar(self) -> None:
         self._sbar2 = tk.Frame(self, padx=6, pady=2)
@@ -840,6 +853,76 @@ class TradeIdeasPanel(tk.Frame):
         # _render delegates to it so both names always work.
         self._populate_table()
         self._set_loading(False, "Sell-premium scan complete")
+
+    def _on_0dte_scan(self):
+        if not _HAS_SP:
+            messagebox.showinfo("0DTE Best Premium", "sell_premium_scanner.py not found.")
+            return
+        if self._loading:
+            return
+        self._set_loading(True, "Running 0DTE best-premium scan...")
+        threading.Thread(target=self._0dte_worker, daemon=True).start()
+
+    def _0dte_worker(self):
+        import random
+        try:
+            import zoneinfo
+            _et = zoneinfo.ZoneInfo("America/New_York")
+            _now = datetime.datetime.now(_et)
+        except Exception:
+            _now = datetime.datetime.now()
+        _tm = _now.hour * 60 + _now.minute
+        if 9*60+45 <= _tm <= 10*60+15:
+            _w, _p = "Early Premium (9:45-10:15 ET)", True
+        elif 11*60 <= _tm <= 11*60+30:
+            _w, _p = "Mid-Morning (11:00-11:30 ET)", True
+        elif 13*60+45 <= _tm <= 14*60+30:
+            _w, _p = "Theta Crush (1:45-2:30 ET) BEST", True
+        elif _tm < 9*60+30 or _tm >= 16*60:
+            _w, _p = "Market Closed - preview mode", False
+        else:
+            _w, _p = "Off-Peak - valid, not prime window", False
+        sym = self._sym_var.get().strip().upper() or "SPY"
+        qty = self._qty_var.get()
+        data = None
+        try:
+            if self._api:
+                data = self._api.get(f"/market/snapshot/{sym}")
+        except Exception as exc:
+            self._log.warning("0DTE fetch: %s", exc)
+        if not data:
+            px = _PRICES.get(sym, 100.0) + random.uniform(-3, 3)
+            iv30 = round(random.uniform(0.20, 0.55), 3)
+            data = {"symbol": sym, "price": round(px,2), "iv30": iv30,
+                    "hv20": round(iv30*random.uniform(0.7,1.1),3),
+                    "iv_rank": round(random.uniform(30,90),1),
+                    "iv_pct": round(random.uniform(35,85),1),
+                    "price_history": [px*(1+random.uniform(-0.005,0.005)) for _ in range(20)]}
+        market = {"price": data["price"], "iv30": data["iv30"],
+                  "hv20": data["hv20"], "iv_rank": data["iv_rank"],
+                  "iv_pct": data.get("iv_pct",50.0),
+                  "price_history": data.get("price_history",[])}
+        ideas = []
+        try:
+            sc = SellPremiumScanner(api_client=self._api)
+            ideas = sc.scan(sym, DTEMode.DTE_0, market, contracts=qty)
+            ideas.sort(key=lambda x: getattr(x,"credit_width_ratio",0.0), reverse=True)
+        except Exception as exc:
+            self._log.exception("0DTE scanner: %s", exc)
+        self.after(0, self._finish_0dte, ideas, market, _w, _p)
+
+    def _finish_0dte(self, ideas, market, window, prime):
+        self._ideas = ideas
+        self._cnt = len(ideas)
+        now = datetime.datetime.now().strftime("%H:%M:%S")
+        self._lbl_last.configure(text=f"0DTE: {now}")
+        self._lbl_cnt.configure(text=f"{self._cnt} idea{'s' if self._cnt!=1 else ''}")
+        self._lbl_ivr.configure(text=f"IV Rank: {market.get('iv_rank',0.0):.1f}")
+        self._status_var.set(f"0DTE Best Premium - {window}")
+        if prime and ideas:
+            ideas[0].notes = f"Best Credit/Risk | {window}"
+        self._populate_table()
+        self._set_loading(False, "0DTE scan complete")
 
     # =======================================================================
     # TABLE RENDER & SORT
