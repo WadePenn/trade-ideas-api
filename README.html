@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Trade Ideas Panel – One‑Click Install</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      line-height: 1.5;
+    }
+    h1 { margin-bottom: 0.2rem; }
+    .tagline { color: #555; margin-top: 0; }
+    .install-box {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 8px;
+      background: #f7fff7;
+      margin: 20px 0 30px;
+    }
+    .btn-install {
+      display: inline-block;
+      padding: 14px 26px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      background: #2ea44f;
+      border-radius: 6px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-install:hover {
+      background: #22863a;
+    }
+    code {
+      background: #f3f3f3;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+    }
+    pre {
+      background: #f3f3f3;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Trade Ideas Panel</h1>
+  <p class="tagline">
+    AI‑powered options scanning panel with FastAPI backend, IBKR integration, and 0DTE credit spread detection.
+  </p>
+
+  <div class="install-box">
+    <h2>⬇️ One‑Click Install</h2>
+    <p><strong>Click the button below to download the installer, then double‑click it. That’s it.</strong></p>
+
+    <!-- If opened from GitHub (raw), this downloads install.bat from the repo -->
+    <p>
+      <a class="btn-install"
+         href="https://github.com/WadePenn/trade-ideas-api/raw/master/install.bat">
+        Install Trade Ideas Panel
+      </a>
+    </p>
+
+    <p><strong>What the installer does automatically:</strong></p>
+    <ul>
+      <li>Installs Python 3.11 if missing (via <code>winget</code>)</li>
+      <li>Installs Git if missing (via <code>winget</code>)</li>
+      <li>Clones this repository to <code>%USERPROFILE%\trade-ideas-api</code></li>
+      <li>Creates a Python virtual environment and installs all packages</li>
+      <li>Creates a <strong>"Trade Ideas Panel"</strong> shortcut on your Desktop</li>
+    </ul>
+
+    <p><strong>Requirements:</strong> Windows 10 or 11 with internet. No Python or Git needed beforehand.</p>
+  </div>
+
+  <h2>🚀 Quick Start (after install)</h2>
+  <ol>
+    <li>Double‑click <strong>Trade Ideas Panel</strong> on your Desktop</li>
+    <li>Ensure TWS / IBKR Gateway is running on port <code>7497</code></li>
+    <li>The FastAPI backend starts automatically — the panel opens on top</li>
+  </ol>
+
+  <h2>🧠 Features</h2>
+  <h3>Strategy Buttons</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td>Auto (Best Fit)</td><td>Scans all strategies and picks the highest‑conviction setup</td></tr>
+    <tr><td>Credit Spread</td><td>Sell‑side vertical credit spreads</td></tr>
+    <tr><td>Debit Spread</td><td>Buy‑side vertical debit spreads</td></tr>
+    <tr><td>Iron Condor</td><td>Neutral range‑bound structure</td></tr>
+    <tr><td>Calendar</td><td>Time‑spread for steady IV environments</td></tr>
+    <tr><td>Sell Premium (0/7 DTE)</td><td>Scans 0 DTE and 7 DTE credit trades</td></tr>
+    <tr><td><strong>0DTE Best Premium</strong></td><td>Best 0DTE credit spread ranked by credit ÷ risk ratio</td></tr>
+  </table>
+
+  <h3>0DTE Window Intelligence</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tr><th>Window</th><th>Time (ET)</th><th>Status</th></tr>
+    <tr><td>Early Premium</td><td>9:45 – 10:15 AM</td><td>🟢 Prime</td></tr>
+    <tr><td>Mid‑Morning</td><td>11:00 – 11:30 AM</td><td>🟢 Prime</td></tr>
+    <tr><td>Theta Crush</td><td>1:45 – 2:30 PM</td><td>⭐ Best of day</td></tr>
+    <tr><td>Other market hours</td><td>—</td><td>🟡 Off‑Peak</td></tr>
+    <tr><td>Outside hours</td><td>—</td><td>🔴 Preview mode</td></tr>
+  </table>
+
+  <h2>🏗️ Project Structure</h2>
+  <pre><code>trade-ideas-api/
+├── install.bat              ← One-click installer (download & double-click)
+├── install.ps1              ← Installer logic (called by install.bat)
+├── StartTradeIdeas.bat      ← Launch server + panel
+├── requirements.txt         ← All Python dependencies
+├── main.py                  ← FastAPI app entry point
+├── routers/
+│   └── sell_premium.py      ← Sell Premium / 0DTE scan endpoints
+└── trade_ideas/
+    ├── panel.py             ← Tkinter UI panel
+    ├── sell_premium_scanner.py
+    └── strategy_engine.py
+</code></pre>
+
+  <h2>🔄 Updating</h2>
+  <p>To pull the latest version on any machine that already has it installed, just run the installer again — it will <code>git pull</code> and keep your venv intact.</p>
+  <pre><code>cd %USERPROFILE%\trade-ideas-api
+git pull
+venv\Scripts\pip install -r requirements.txt -q
+</code></pre>
+
+  <p><em>Built by Wade — Burien, WA</em></p>
+
+</body>
+</html>
