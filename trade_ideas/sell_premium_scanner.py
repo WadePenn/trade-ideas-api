@@ -361,7 +361,7 @@ class SellPremiumScanner:
         ideas   = scanner.scan("SPY", dte_mode=DTEMode.BOTH, market_data={...})
     """
 
-    def __init__(self, api_client=None, dry_run: bool = True):
+    def __init__(self, api_client=None, dry_run: bool = False):
         self._api      = api_client
         self._dry_run  = dry_run
 

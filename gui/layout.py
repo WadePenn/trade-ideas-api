@@ -92,7 +92,7 @@ ti_panel = register_trade_ideas_tab(
     theme_manager = your_theme_mgr,
     hotkey_mgr    = HotkeyAdapter(your_hotkey_mgr),
     app_logger    = your_logger,
-    dry_run       = True,          # flip False for live IBKR
+    dry_run       = False,         # live IBKR
     refresh_interval = 60,
 )
 
