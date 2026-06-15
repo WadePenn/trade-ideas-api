@@ -202,7 +202,7 @@ class TradeIdeasPanel(tk.Frame):
         theme_manager=None,
         hotkey_mgr=None,
         app_logger=None,
-        dry_run: bool = True,
+        dry_run: bool = False,
         refresh_interval: int = 60,
         **kw,
     ) -> None:

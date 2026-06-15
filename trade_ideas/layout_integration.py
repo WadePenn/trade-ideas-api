@@ -25,7 +25,7 @@ def register_trade_ideas_tab(
     hotkey_mgr=None,
     app_logger=None,
     tab_label: str = "💡 Trade Ideas",
-    dry_run: bool = True,
+    dry_run: bool = False,
     refresh_interval: int = 60,
 ) -> TradeIdeasPanel:
     """Add a Trade Ideas tab to an existing ttk.Notebook. Returns the panel."""
@@ -44,7 +44,7 @@ def create_trade_ideas_frame(
     theme_manager=None,
     hotkey_mgr=None,
     app_logger=None,
-    dry_run: bool = True,
+    dry_run: bool = False,
     refresh_interval: int = 60,
     row: int = 0,
     col: int = 0,
