@@ -33,6 +33,9 @@ def build_ibkr_payload(idea: TradeIdea, account: str = "") -> dict:
 class IBKRBridge:
     def __init__(self, api_client=None, dry_run=False,
                  on_status: Optional[Callable]=None, account=""):
+        if api_client is None:
+            import httpx
+            api_client = httpx.Client(base_url="http://localhost:8000", timeout=15.0)
         self._api       = api_client
         self._dry_run   = dry_run
         self._on_status = on_status
