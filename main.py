@@ -163,7 +163,7 @@ async def health():
     try:
         from fastapi_endpoints.services.ibkr_order_service import get_ibkr_order_service
         svc = get_ibkr_order_service()
-        ibkr_connected = svc.is_connected if hasattr(svc, 'is_connected') else None
+        ic=getattr(svc,"is_connected",None);ibkr_connected=bool(ic()) if callable(ic) else bool(ic) if ic is not None else None
     except Exception:
         ibkr_connected = None
     return {
